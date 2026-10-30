@@ -9,6 +9,9 @@ import { createItemSchema, listItemsQuerySchema } from '../src/modules/items/ite
 import { canTransition, mapItem } from '../src/modules/items/items.service.js';
 import { ALLOWED_MIME_TYPES, detectImageMime } from '../src/middleware/upload.js';
 import { errorHandler } from '../src/middleware/errorHandler.js';
+import { authenticate, optionalAuthenticate } from '../src/middleware/auth.js';
+import { signToken } from '../src/utils/jwt.js';
+import User from '../src/models/User.js';
 
 const app = createApp();
 const validId = '507f1f77bcf86cd799439011';
@@ -134,4 +137,30 @@ test('Mongo duplicate-key errors produce a conflict response', () => {
   );
   assert.equal(statusCode, 409);
   assert.equal(body.error.code, 'CONFLICT');
+});
+
+test('authentication middleware resolves users from the JWT subject', async (context) => {
+  const originalFindById = User.findById;
+  const user = { _id: { toString: () => validId }, role: 'user', is_active: true };
+  User.findById = async (id) => {
+    assert.equal(id, validId);
+    return user;
+  };
+  context.after(() => {
+    User.findById = originalFindById;
+  });
+
+  const token = signToken({ userId: validId, role: 'user' });
+  for (const middleware of [authenticate, optionalAuthenticate]) {
+    const req = { headers: { authorization: `Bearer ${token}` } };
+    let nextError;
+    await new Promise((resolve) => {
+      middleware(req, {}, (error) => {
+        nextError = error;
+        resolve();
+      });
+    });
+    assert.equal(nextError, undefined);
+    assert.deepEqual(req.user, { userId: validId, role: 'user' });
+  }
 });

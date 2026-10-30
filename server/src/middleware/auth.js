@@ -11,7 +11,7 @@ export async function authenticate(req, res, next) {
     const token = extractToken(req);
     if (!token) throw unauthorized('Authentication required');
     const decoded = verifyToken(token);
-    const user = await User.findById(decoded.userId);
+    const user = await User.findById(decoded.sub);
     if (!user || !user.is_active) throw unauthorized('Account deactivated or not found');
     req.user = { userId: user._id.toString(), role: user.role };
     next();
@@ -30,7 +30,7 @@ export async function optionalAuthenticate(req, res, next) {
     return next();
   }
   try {
-    const user = await User.findById(decoded.userId);
+    const user = await User.findById(decoded.sub);
     if (user && user.is_active) req.user = { userId: user._id.toString(), role: user.role };
     return next();
   } catch (error) {
