@@ -3,6 +3,7 @@ import User from '../models/User.js';
 import Item from '../models/Item.js';
 import Category from '../models/Category.js';
 import db from '../config/db.js';
+import { findMatchesForItem } from '../services/matching.service.js';
 
 const DEMO_PASSWORD = 'Password123';
 const DEMO_USERS = [
@@ -73,7 +74,21 @@ async function seed() {
       { upsert: true }
     );
   }
-  console.log('MongoDB seed data is present (existing records were not modified or deleted).');
+  let createdMatches = 0;
+  for (const example of examples) {
+    const item = await Item.findOne({
+      user_id: example.user_id,
+      type: example.type,
+      title: example.title,
+      deleted_at: null,
+    }).select('_id');
+    if (!item) throw new Error(`Seeded ${example.type} demo report could not be found.`);
+    const result = await findMatchesForItem(item._id);
+    createdMatches += result.created;
+  }
+  console.log(
+    `MongoDB seed data is present; ${createdMatches} demo match(es) created (existing records were not modified or deleted).`
+  );
 }
 
 seed()
