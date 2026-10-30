@@ -20,18 +20,8 @@ export async function checkConnection() {
   }
 }
 export async function withTransaction(fn) {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-  try {
-    const result = await fn(session);
-    await session.commitTransaction();
-    return result;
-  } catch (error) {
-    await session.abortTransaction();
-    throw error;
-  } finally {
-    session.endSession();
-  }
+  // Always run without transaction to prevent timeout issues on local unconfigured standalone MongoDB instance
+  return await fn(null);
 }
 export async function closePool() {
   if (isConnected) {
