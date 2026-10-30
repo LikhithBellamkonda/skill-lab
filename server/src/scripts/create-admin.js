@@ -27,9 +27,10 @@
  *   * email exists as an admin -> reports it and changes nothing
  */
 import readline from 'node:readline';
-import { query, withTransaction, closePool } from '../config/db.js';
+import { withTransaction, closePool } from '../config/db.js';
+import User from '../models/User.js';
 import { hashPassword, isPasswordAcceptable, PASSWORD_POLICY } from '../utils/password.js';
-import { describeConnection } from '../../../database/scripts/lib/env.js';
+const describeConnection = (url) => url;
 import config from '../config/env.js';
 import * as auditService from '../services/audit.service.js';
 
@@ -132,16 +133,16 @@ async function main() {
 
   console.log(`Target database: ${describeConnection(config.databaseUrl)}`);
 
-  const existing = await query(
-    `SELECT user_id, email, role, is_active FROM users WHERE email = $1`,
-    [email]
-  );
+    await (await import('../config/db.js')).connect();
+
+  const existingUser = await User.findOne({ email });
+  const existing = existingUser ? { rows: [existingUser] } : { rows: [] };
 
   if (existing.rows.length > 0) {
     const user = existing.rows[0];
 
     if (user.role === 'admin') {
-      console.log(`\n${email} is already an administrator (user_id=${user.user_id}). Nothing to do.`);
+      console.log(`\n${email} is already an administrator (user_id=${user._id}). Nothing to do.`);
       return;
     }
     if (!flags.has('promote')) {
@@ -152,20 +153,22 @@ async function main() {
     }
 
     await withTransaction(async (client) => {
-      await client.query(`UPDATE users SET role = 'admin', is_active = TRUE WHERE user_id = $1`, [user.user_id]);
+      user.role = 'admin';
+      user.is_active = true;
+      await user.save();
       await auditService.record(
         {
           actorUserId: null, // performed out-of-band by an operator
-          action: auditService.AUDIT_ACTIONS.USER_ROLE_GRANTED,
+          action: 'user.role.granted',
           entityType: 'user',
-          entityId: user.user_id,
-          metadata: { email, from: user.role, to: 'admin', method: 'admin:create --promote' },
+          entityId: user._id.toString(),
+          metadata: { email, from: existingUser.role, to: 'admin', method: 'admin:create --promote' },
         },
         client
       );
     });
 
-    console.log(`\nPromoted ${email} to administrator (user_id=${user.user_id}). Password unchanged.`);
+    console.log(`\nPromoted ${email} to administrator (user_id=${user._id}). Password unchanged.`);
     return;
   }
 
@@ -177,19 +180,22 @@ async function main() {
   const passwordHash = await hashPassword(password);
 
   const created = await withTransaction(async (client) => {
-    const { rows } = await client.query(
-      `INSERT INTO users (full_name, email, password_hash, role, is_active)
-       VALUES ($1, $2, $3, 'admin', TRUE)
-       RETURNING user_id, email, role`,
-      [fullName, email, passwordHash]
-    );
+    const newUser = new User({
+      full_name: fullName,
+      email,
+      password_hash: passwordHash,
+      role: 'admin',
+      is_active: true
+    });
+    await newUser.save();
+    const rows = [{ user_id: newUser._id, email, role: 'admin' }];
 
     await auditService.record(
       {
         actorUserId: null,
-        action: auditService.AUDIT_ACTIONS.USER_ROLE_GRANTED,
+        action: 'user.role.granted',
         entityType: 'user',
-        entityId: rows[0].user_id,
+        entityId: rows[0].user_id.toString(),
         metadata: { email, from: null, to: 'admin', method: 'admin:create' },
       },
       client
