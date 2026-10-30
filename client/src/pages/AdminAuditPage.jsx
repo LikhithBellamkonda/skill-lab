@@ -31,12 +31,16 @@ export function AdminAuditPage() {
       <header className="page__header">
         <h1>Audit log</h1>
         <p>
-          Every important user and administrator action is recorded here. Records are append-only and contain no
-          passwords, tokens, private evidence or verification details.
+          Every important user and administrator action is recorded here. Records are append-only
+          and contain no passwords, tokens, private evidence or verification details.
         </p>
       </header>
 
-      <form className="filters" onSubmit={(event) => event.preventDefault()} aria-label="Filter audit records">
+      <form
+        className="filters"
+        onSubmit={(event) => event.preventDefault()}
+        aria-label="Filter audit records"
+      >
         <Field id="audit-action" label="Action">
           <input
             id="audit-action"
@@ -65,11 +69,23 @@ export function AdminAuditPage() {
         </datalist>
 
         <Field id="audit-entity" label="Entity type">
-          <input id="audit-entity" type="text" value={filters.entityType} onChange={update('entityType')} placeholder="item, claim, match, user" />
+          <input
+            id="audit-entity"
+            type="text"
+            value={filters.entityType}
+            onChange={update('entityType')}
+            placeholder="item, claim, match, user"
+          />
         </Field>
 
         <Field id="audit-actor" label="Actor user id">
-          <input id="audit-actor" type="number" min="1" value={filters.actorUserId} onChange={update('actorUserId')} placeholder="e.g. 2" />
+          <input
+            id="audit-actor"
+            type="text"
+            value={filters.actorUserId}
+            onChange={update('actorUserId')}
+            placeholder="MongoDB user id"
+          />
         </Field>
 
         <div className="filters__actions">

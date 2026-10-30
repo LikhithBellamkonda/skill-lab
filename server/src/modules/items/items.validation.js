@@ -1,44 +1,29 @@
-/**
- * Request validation schemas for the items module (zod).
- *
- * Every bound here mirrors a database constraint, so invalid data is rejected
- * with a friendly 422 before it ever reaches PostgreSQL.
- */
 import { z } from 'zod';
 import { ALLOWED_TRANSITIONS } from './items.service.js';
 
+const objectId = z.string().regex(/^[0-9a-fA-F]{24}$/, 'Must be a valid MongoDB id');
 const reportType = z.enum(['lost', 'found']);
 const itemStatus = z.enum(['open', 'matched', 'claimed', 'returned', 'closed', 'rejected']);
+const latitude = z.number().min(-90).max(90);
+const longitude = z.number().min(-180).max(180);
+const trimmed = (max, min = 1) => z.string().trim().min(min).max(max);
 
-const latitude = z
-  .number()
-  .min(-90, 'latitude must be between -90 and 90')
-  .max(90, 'latitude must be between -90 and 90');
-
-const longitude = z
-  .number()
-  .min(-180, 'longitude must be between -180 and 180')
-  .max(180, 'longitude must be between -180 and 180');
-
-/** Ensures latitude and longitude are provided together (or both omitted). */
 function requireCoordinatePair(value, ctx) {
-  const hasLat = value.latitude !== undefined && value.latitude !== null;
-  const hasLon = value.longitude !== undefined && value.longitude !== null;
-  if (hasLat !== hasLon) {
+  const hasLatitude = value.latitude !== undefined && value.latitude !== null;
+  const hasLongitude = value.longitude !== undefined && value.longitude !== null;
+  if (hasLatitude !== hasLongitude) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      path: hasLat ? ['longitude'] : ['latitude'],
+      path: [hasLatitude ? 'longitude' : 'latitude'],
       message: 'latitude and longitude must be provided together',
     });
   }
 }
 
-const trimmed = (max, min = 1) => z.string().trim().min(min).max(max);
-
 export const createItemSchema = z
   .object({
     reportType,
-    categoryId: z.number().int().positive(),
+    categoryId: objectId,
     title: trimmed(200, 3),
     description: trimmed(5000, 10),
     colour: trimmed(50).nullish(),
@@ -53,10 +38,7 @@ export const createItemSchema = z
 
 export const updateItemSchema = z
   .object({
-    // Accepted so that an attempt to change it produces a precise 400 from the
-    // service instead of being silently dropped by validation.
-    reportType: reportType.optional(),
-    categoryId: z.number().int().positive().optional(),
+    categoryId: objectId.optional(),
     title: trimmed(200, 3).optional(),
     description: trimmed(5000, 10).optional(),
     colour: trimmed(50).nullish(),
@@ -72,14 +54,12 @@ export const updateItemSchema = z
   })
   .superRefine(requireCoordinatePair);
 
-export const updateStatusSchema = z.object({
-  status: itemStatus,
-});
+export const updateStatusSchema = z.object({ status: itemStatus });
 
 export const listItemsQuerySchema = z
   .object({
     type: reportType.optional(),
-    categoryId: z.coerce.number().int().positive().optional(),
+    categoryId: objectId.optional(),
     status: itemStatus.optional(),
     colour: trimmed(50).optional(),
     brand: trimmed(100).optional(),
@@ -89,34 +69,35 @@ export const listItemsQuerySchema = z
     latitude: z.coerce.number().min(-90).max(90).optional(),
     longitude: z.coerce.number().min(-180).max(180).optional(),
     radiusMeters: z.coerce.number().positive().max(200_000).optional(),
-    reporterId: z.coerce.number().int().positive().optional(),
     sort: z.enum(['recent', 'relevance', 'distance', 'event_time']).default('recent'),
     page: z.coerce.number().int().positive().default(1),
     limit: z.coerce.number().int().positive().max(100).default(20),
   })
-  .superRefine(requireCoordinatePair);
+  .superRefine((value, ctx) => {
+    requireCoordinatePair(value, ctx);
+    if (
+      value.sort === 'distance' &&
+      (value.latitude === undefined || value.longitude === undefined)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['latitude'],
+        message: 'latitude and longitude are required for distance sorting',
+      });
+    }
+  });
 
-export const listOwnItemsQuerySchema = z
-  .object({
-    type: reportType.optional(),
-    status: itemStatus.optional(),
-    includeDeleted: z
-      .enum(['true', 'false'])
-      .transform((value) => value === 'true')
-      .optional(),
-    page: z.coerce.number().int().positive().default(1),
-    limit: z.coerce.number().int().positive().max(100).default(20),
-  })
-  .passthrough();
-
-export const itemIdParamSchema = z.object({
-  itemId: z.coerce.number().int().positive(),
+export const listOwnItemsQuerySchema = z.object({
+  type: reportType.optional(),
+  status: itemStatus.optional(),
+  includeDeleted: z
+    .enum(['true', 'false'])
+    .transform((value) => value === 'true')
+    .optional(),
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(20),
 });
 
-export const imageParamSchema = z.object({
-  itemId: z.coerce.number().int().positive(),
-  imageId: z.coerce.number().int().positive(),
-});
-
-/** Exposed for documentation and tests. */
+export const itemIdParamSchema = z.object({ itemId: objectId });
+export const imageParamSchema = z.object({ itemId: objectId, imageId: objectId });
 export const TRANSITIONS = ALLOWED_TRANSITIONS;

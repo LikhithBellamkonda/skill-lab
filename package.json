@@ -2,10 +2,10 @@
   "name": "smart-lost-found",
   "version": "1.0.0",
   "private": true,
-  "description": "Smart Lost & Found - AI-assisted campus item recovery system using PostGIS spatial indexing and relational data management",
+  "description": "Smart Lost & Found - a MongoDB-backed campus lost and found application",
   "type": "module",
   "engines": {
-    "node": ">=20.11.0",
+    "node": ">=20.19.0",
     "npm": ">=10.0.0"
   },
   "workspaces": [
@@ -21,21 +21,13 @@
     "preview": "npm run preview --workspace client",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "format": "prettier --write \"{server,client,database}/**/*.{js,jsx,sql,json,css}\" \"*.{md,json}\"",
-    "db:create": "echo 'MongoDB configured'",
-    "db:migrate": "echo 'MongoDB configured'",
-    "db:rollback": "echo 'MongoDB configured'",
+    "format": "prettier --write \"{server,client}/**/*.{js,jsx,json,css}\" \"*.{md,json}\"",
     "db:seed": "node server/src/scripts/seed.js",
     "db:setup": "npm run db:seed",
-    "db:reset": "npm run db:seed",
-    "db:status": "echo 'MongoDB configured'",
-    "db:explain": "echo 'MongoDB configured'",
-    "api:smoke": "echo 'MongoDB configured'",
+    "db:status": "node server/src/scripts/db-status.js",
     "admin:create": "node server/src/scripts/create-admin.js",
     "deploy:prepare": "node server/src/scripts/deploy-prepare.js",
-    "test": "npm run test --workspace server",
-    "test:setup": "node database/scripts/migrate.js --env=test",
-    "test:reset": "node database/scripts/migrate.js --env=test --reset"
+    "test": "npm run test --workspace server"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.0",
@@ -43,7 +35,6 @@
     "dotenv": "^16.6.1",
     "eslint": "^10.13.0",
     "globals": "^17.13.0",
-    "pg": "^8.23.1",
     "prettier": "^3.9.10"
   }
 }

@@ -9,7 +9,7 @@ import { ITEM_STATUS_OPTIONS } from './Badges.jsx';
 
 /**
  * @param {{
- *   categories: {categoryId: number, name: string}[],
+ *   categories: {categoryId: string, name: string}[],
  *   value: Record<string, string>,
  *   onChange: (patch: Record<string, string>) => void,
  *   onReset: () => void,
@@ -68,7 +68,13 @@ export function ItemFilters({ categories, value, onChange, onReset, busy = false
       </Field>
 
       <Field id="filter-colour" label="Colour">
-        <input id="filter-colour" type="text" value={value.colour ?? ''} onChange={set('colour')} placeholder="e.g. black" />
+        <input
+          id="filter-colour"
+          type="text"
+          value={value.colour ?? ''}
+          onChange={set('colour')}
+          placeholder="e.g. black"
+        />
       </Field>
 
       <Field id="filter-sort" label="Sort by">
@@ -83,7 +89,8 @@ export function ItemFilters({ categories, value, onChange, onReset, busy = false
       <fieldset className="filters__location">
         <legend>Location filter (optional)</legend>
         <p className="filters__hint">
-          Provide both coordinates to search within a radius. Coordinates are latitude and longitude in decimal degrees.
+          Provide both coordinates to search within a radius. Coordinates are latitude and longitude
+          in decimal degrees.
         </p>
         <div className="filters__row">
           <Field id="filter-latitude" label="Latitude">
@@ -136,10 +143,19 @@ export function ItemFilters({ categories, value, onChange, onReset, busy = false
       </fieldset>
 
       <div className="filters__actions">
-        <button type="button" className="button button--secondary" onClick={onReset} disabled={busy}>
+        <button
+          type="button"
+          className="button button--secondary"
+          onClick={onReset}
+          disabled={busy}
+        >
           Clear filters
         </button>
-        {busy ? <span className="filters__busy" role="status">Searching…</span> : null}
+        {busy ? (
+          <span className="filters__busy" role="status">
+            Searching…
+          </span>
+        ) : null}
       </div>
     </form>
   );

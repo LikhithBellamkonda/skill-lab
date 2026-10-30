@@ -1,9 +1,8 @@
 /**
  * Health endpoint (spec 14 "Administration and Health").
  *
- * Reports liveness plus an optional database readiness check. It never reveals
- * credentials, hosts or connection strings: only a boolean, the database name and
- * the PostGIS version, which are safe and genuinely useful.
+ * Reports liveness plus an optional MongoDB readiness check without exposing
+ * credentials or connection details.
  */
 import { Router } from 'express';
 import { checkConnection } from '../../config/db.js';
@@ -34,11 +33,15 @@ healthRouter.get(
     if (withDatabase) {
       try {
         const database = await checkConnection();
+        if (!database.ok) {
+          payload.status = 'degraded';
+          payload.checks = { database: { status: 'unavailable' } };
+          return res.status(503).json(payload);
+        }
         payload.checks = {
           database: {
             status: 'ok',
             name: database.database,
-            postgisVersion: database.postgisVersion,
             latencyMs: database.latencyMs,
           },
         };

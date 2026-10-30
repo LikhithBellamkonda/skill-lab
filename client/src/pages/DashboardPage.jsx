@@ -46,7 +46,9 @@ export function DashboardPage() {
         </div>
         <div className="card stat">
           <span className="stat__label">Suggested matches</span>
-          <span className="stat__value">{matchesQuery.meta?.total ?? (matchesQuery.data?.length ?? 0)}</span>
+          <span className="stat__value">
+            {matchesQuery.meta?.total ?? matchesQuery.data?.length ?? 0}
+          </span>
         </div>
       </div>
 
@@ -108,12 +110,16 @@ export function DashboardPage() {
           <ul className="mini-list">
             {(matchesQuery.data ?? []).map((match) => (
               <li key={match.matchId}>
-                <Link to={`/items/${match.foundItem.isMine ? match.lostItem.itemId : match.foundItem.itemId}`}>
+                <Link
+                  to={`/items/${match.foundItem.isMine ? match.lostItem.itemId : match.foundItem.itemId}`}
+                >
                   {match.foundItem.isMine ? match.lostItem.title : match.foundItem.title}
                 </Link>
                 <span className="mini-list__meta">
                   <strong>{match.overallScore}%</strong>
-                  {formatDistance(match.distanceMeters) ? <span>{formatDistance(match.distanceMeters)}</span> : null}
+                  {formatDistance(match.distanceMeters) ? (
+                    <span>{formatDistance(match.distanceMeters)}</span>
+                  ) : null}
                 </span>
               </li>
             ))}
@@ -130,7 +136,10 @@ export function DashboardPage() {
           {claimsQuery.loading ? <Loading /> : null}
           <ErrorMessage error={claimsQuery.error} onRetry={claimsQuery.reload} />
           {!claimsQuery.loading && (claimsQuery.data ?? []).length === 0 ? (
-            <EmptyState title="No claims yet" description="When you claim a found item it appears here." />
+            <EmptyState
+              title="No claims yet"
+              description="When you claim a found item it appears here."
+            />
           ) : null}
           <ul className="mini-list">
             {(claimsQuery.data ?? []).map((claim) => (
@@ -155,7 +164,10 @@ export function DashboardPage() {
           {notificationsQuery.loading ? <Loading /> : null}
           <ErrorMessage error={notificationsQuery.error} onRetry={notificationsQuery.reload} />
           {!notificationsQuery.loading && (notificationsQuery.data ?? []).length === 0 ? (
-            <EmptyState title="Nothing new" description="Updates about your reports and claims will appear here." />
+            <EmptyState
+              title="Nothing new"
+              description="Updates about your reports and claims will appear here."
+            />
           ) : null}
           <ul className="mini-list">
             {(notificationsQuery.data ?? []).map((notification) => (
@@ -163,7 +175,9 @@ export function DashboardPage() {
                 <strong>{notification.title}</strong>
                 <span className="mini-list__meta">
                   <span>{formatDateTime(notification.createdAt)}</span>
-                  {notification.isRead ? null : <span className="badge badge--matched">Unread</span>}
+                  {notification.isRead ? null : (
+                    <span className="badge badge--matched">Unread</span>
+                  )}
                 </span>
               </li>
             ))}
@@ -189,8 +203,8 @@ export function DashboardPage() {
               <dt>Database</dt>
               <dd>
                 {healthQuery.data.checks?.database?.status ?? 'unknown'}
-                {healthQuery.data.checks?.database?.postgisVersion
-                  ? ` (PostGIS ${healthQuery.data.checks.database.postgisVersion})`
+                {healthQuery.data.checks?.database?.name
+                  ? ` (${healthQuery.data.checks.database.name})`
                   : ''}
               </dd>
             </div>

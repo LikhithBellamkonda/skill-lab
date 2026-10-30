@@ -1,5 +1,11 @@
 # PROJECT SPECIFICATION
 
+> **Implementation status:** This document describes the original PostgreSQL/PostGIS
+> proposal. The repository has since migrated to MongoDB/Mongoose. For the current
+> stack, API, and deployment instructions, use `README.md` and the documents in
+> `docs/`; SQL migrations, PostGIS, and the `pg` driver mentioned below are not
+> part of the current implementation.
+
 ## Smart Lost & Found: An AI-Assisted Campus Item Recovery System Using Spatial Database Indexing and Relational Data Management
 
 **Project type:** DBMS-focused academic web application  

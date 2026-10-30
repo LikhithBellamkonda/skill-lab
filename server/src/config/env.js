@@ -26,35 +26,33 @@ if (fs.existsSync(serverEnv)) dotenv.config({ path: serverEnv, override: true })
 
 const boolLike = z
   .union([z.boolean(), z.string()])
-  .transform((value) => (typeof value === 'boolean' ? value : ['1', 'true', 'yes', 'on'].includes(value.toLowerCase())));
+  .transform((value) =>
+    typeof value === 'boolean' ? value : ['1', 'true', 'yes', 'on'].includes(value.toLowerCase())
+  );
 
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().min(1).max(65535).default(4000),
   CLIENT_ORIGIN: z.string().default('http://localhost:5173'),
 
-  DATABASE_URL: z.string().min(1, 'DATABASE_URL is required (see .env.example)'),
-  TEST_DATABASE_URL: z.string().optional(),
-
-  // Managed Postgres often has a low connection limit (a free Supabase project
-  // allows ~60 direct connections including its own pooler). A serverless or
-  // free-tier deployment should keep this small.
-  PGPOOL_MAX: z.coerce.number().int().positive().max(100).optional(),
-
-  // Some managed providers install PostGIS into a schema other than `public`
-  // (Supabase uses `extensions`). Setting this makes the type/function lookup
-  // work without moving the extension. Applied as a startup parameter, so it is
-  // never interpolated into SQL.
-  PG_SEARCH_PATH: z
+  DATABASE_URL: z
     .string()
-    .max(200)
-    .regex(/^[A-Za-z0-9_,$" ]+$/, 'PG_SEARCH_PATH may only contain schema names, commas and quotes')
+    .min(1, 'DATABASE_URL is required (see .env.example)')
+    .refine((value) => value.startsWith('mongodb://') || value.startsWith('mongodb+srv://'), {
+      message: 'DATABASE_URL must be a MongoDB connection string.',
+    }),
+  TEST_DATABASE_URL: z
+    .string()
+    .refine((value) => value.startsWith('mongodb://') || value.startsWith('mongodb+srv://'), {
+      message: 'TEST_DATABASE_URL must be a MongoDB connection string.',
+    })
     .optional(),
+  MONGO_MAX_POOL_SIZE: z.coerce.number().int().positive().max(100).optional(),
 
   JWT_SECRET: z.string().min(16, 'JWT_SECRET must be at least 16 characters'),
   JWT_EXPIRES_IN: z.string().default('1d'),
 
-  UPLOAD_DIR: z.string().default('uploads'),
+  UPLOAD_DIR: z.string().default(process.env.VERCEL ? '/tmp/uploads' : 'uploads'),
   MAX_UPLOAD_MB: z.coerce.number().positive().max(50).default(5),
 
   MATCH_RADIUS_METERS: z.coerce.number().positive().max(200_000).default(1500),
@@ -103,7 +101,7 @@ if (isProduction) {
   if (raw.JWT_SECRET.includes('replace_with') || raw.JWT_SECRET.length < 32) {
     throw new Error(
       'Refusing to start in production with a placeholder or short JWT_SECRET. ' +
-        'Generate one with: node -e "console.log(require(\'crypto\').randomBytes(48).toString(\'hex\'))"'
+        "Generate one with: node -e \"console.log(require('crypto').randomBytes(48).toString('hex'))\""
     );
   }
   if (raw.DATABASE_URL.includes('change_me')) {
@@ -112,7 +110,10 @@ if (isProduction) {
 }
 
 const weightSum =
-  raw.MATCH_WEIGHT_ATTRIBUTE + raw.MATCH_WEIGHT_TIME + raw.MATCH_WEIGHT_SPATIAL + raw.MATCH_WEIGHT_AI;
+  raw.MATCH_WEIGHT_ATTRIBUTE +
+  raw.MATCH_WEIGHT_TIME +
+  raw.MATCH_WEIGHT_SPATIAL +
+  raw.MATCH_WEIGHT_AI;
 if (weightSum <= 0) {
   throw new Error('At least one MATCH_WEIGHT_* value must be greater than zero.');
 }
@@ -130,9 +131,9 @@ export const config = Object.freeze({
     .map((origin) => origin.trim())
     .filter(Boolean),
 
-  databaseUrl: raw.NODE_ENV === 'test' && raw.TEST_DATABASE_URL ? raw.TEST_DATABASE_URL : raw.DATABASE_URL,
-  dbPoolMax: raw.PGPOOL_MAX ?? (raw.NODE_ENV === 'test' ? 5 : 10),
-  pgSearchPath: raw.PG_SEARCH_PATH ?? null,
+  databaseUrl:
+    raw.NODE_ENV === 'test' && raw.TEST_DATABASE_URL ? raw.TEST_DATABASE_URL : raw.DATABASE_URL,
+  dbPoolMax: raw.MONGO_MAX_POOL_SIZE ?? (raw.NODE_ENV === 'test' ? 5 : 10),
 
   jwtSecret: raw.JWT_SECRET,
   jwtExpiresIn: raw.JWT_EXPIRES_IN,

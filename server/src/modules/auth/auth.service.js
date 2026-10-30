@@ -1,5 +1,8 @@
 import bcrypt from 'bcryptjs';
 import User from '../../models/User.js';
+import Item from '../../models/Item.js';
+import Claim from '../../models/Claim.js';
+import Notification from '../../models/Notification.js';
 import { badRequest, conflict, unauthorized } from '../../utils/httpError.js';
 import * as auditService from '../../services/audit.service.js';
 import { signToken } from '../../utils/jwt.js';
@@ -22,8 +25,21 @@ export async function register(body) {
   if (existing) throw conflict('Email address is already in use');
   const salt = await bcrypt.genSalt(10);
   const passwordHash = await bcrypt.hash(password, salt);
-  const user = await User.create({ email: normalizedEmail, password_hash: passwordHash, full_name: fullName.trim() });
-  return { user: mapUser(user), token: signToken({ userId: user._id.toString(), role: user.role }) };
+  const user = await User.create({
+    email: normalizedEmail,
+    password_hash: passwordHash,
+    full_name: fullName.trim(),
+  });
+  await auditService.logSystemAction({
+    action: 'user.registered',
+    entityType: 'user',
+    entityId: user._id.toString(),
+    actorUserId: user._id,
+  });
+  return {
+    user: mapUser(user),
+    token: signToken({ userId: user._id.toString(), role: user.role }),
+  };
 }
 export async function login(body) {
   const { email, password } = body;
@@ -32,12 +48,26 @@ export async function login(body) {
   if (!user) throw unauthorized('Invalid credentials or inactive account');
   const valid = await bcrypt.compare(password, user.password_hash);
   if (!valid) throw unauthorized('Invalid credentials or inactive account');
-  return { user: mapUser(user), token: signToken({ userId: user._id.toString(), role: user.role }) };
+  await auditService.logSystemAction({
+    action: 'user.login',
+    entityType: 'user',
+    entityId: user._id.toString(),
+    actorUserId: user._id,
+  });
+  return {
+    user: mapUser(user),
+    token: signToken({ userId: user._id.toString(), role: user.role }),
+  };
 }
 export async function getProfile(userId) {
   const user = await User.findById(userId);
   if (!user || !user.is_active) throw unauthorized('Account inactive or not found');
-  return { ...mapUser(user), stats: { itemCount: 0, claimCount: 0, unreadNotificationCount: 0 } };
+  const [itemCount, claimCount, unreadNotificationCount] = await Promise.all([
+    Item.countDocuments({ user_id: userId, deleted_at: null }),
+    Claim.countDocuments({ user_id: userId }),
+    Notification.countDocuments({ user_id: userId, is_read: false }),
+  ]);
+  return { ...mapUser(user), stats: { itemCount, claimCount, unreadNotificationCount } };
 }
 export async function changePassword(userId, { currentPassword, newPassword }) {
   const user = await User.findById(userId);

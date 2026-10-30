@@ -20,7 +20,14 @@ import {
   formatCoordinates,
   formatDistance,
 } from '../components/Badges.jsx';
-import { Loading, ErrorMessage, EmptyState, ConfirmDialog, Field, SuccessMessage } from '../components/Feedback.jsx';
+import {
+  Loading,
+  ErrorMessage,
+  EmptyState,
+  ConfirmDialog,
+  Field,
+  SuccessMessage,
+} from '../components/Feedback.jsx';
 
 const ALLOWED_TRANSITIONS = {
   open: ['matched', 'claimed', 'closed'],
@@ -140,7 +147,11 @@ export function ItemDetailPage() {
     }
   };
 
-  const claimable = isAuthenticated && !isOwner && item.reportType === 'found' && ['open', 'matched', 'claimed'].includes(item.status);
+  const claimable =
+    isAuthenticated &&
+    !isOwner &&
+    item.reportType === 'found' &&
+    ['open', 'matched', 'claimed'].includes(item.status);
 
   return (
     <div className="page">
@@ -198,7 +209,10 @@ export function ItemDetailPage() {
             <ul>
               {item.images.map((image) => (
                 <li key={image.imageId}>
-                  <img src={assetUrl(image.imageUrl)} alt={image.altText || `Photo of ${item.title}`} />
+                  <img
+                    src={assetUrl(image.imageUrl)}
+                    alt={image.altText || `Photo of ${item.title}`}
+                  />
                   {canManage ? (
                     <button
                       type="button"
@@ -231,11 +245,13 @@ export function ItemDetailPage() {
             {item.privateDetails?.verificationHint ? (
               <p className="claim-card__hint">{item.privateDetails.verificationHint}</p>
             ) : (
-              <p className="claim-card__note">No verification detail was recorded for this report.</p>
+              <p className="claim-card__note">
+                No verification detail was recorded for this report.
+              </p>
             )}
             <p className="field-hint">
-              This is visible only to {isOwner ? 'you and administrators' : 'administrators'} and is never included in
-              public responses.
+              This is visible only to {isOwner ? 'you and administrators' : 'administrators'} and is
+              never included in public responses.
             </p>
           </section>
         ) : null}
@@ -248,15 +264,19 @@ export function ItemDetailPage() {
           {matchesQuery.loading && canManage ? <Loading label="Loading matches…" /> : null}
           <ErrorMessage error={matchesQuery.error} />
           {canManage && !matchesQuery.loading && (matchesQuery.data ?? []).length === 0 ? (
-            <p className="claim-card__note">No candidate matches yet. Recalculating can help after edits.</p>
+            <p className="claim-card__note">
+              No candidate matches yet. Recalculating can help after edits.
+            </p>
           ) : null}
           <ul className="match-list">
             {(matchesQuery.data ?? []).map((match) => (
               <li key={match.matchId} className="match-list__row">
                 <span className="match-list__score">{match.overallScore}%</span>
                 <span>
-                  {match.lostItem.isMine ? 'Your lost report' : 'Lost report'}: {match.lostItem.title} ↔{' '}
-                  {match.foundItem.isMine ? 'your found report' : 'found report'}: {match.foundItem.title}
+                  {match.lostItem.isMine ? 'Your lost report' : 'Lost report'}:{' '}
+                  {match.lostItem.title} ↔{' '}
+                  {match.foundItem.isMine ? 'your found report' : 'found report'}:{' '}
+                  {match.foundItem.title}
                 </span>
                 {formatDistance(match.distanceMeters) ? (
                   <span className="badge badge--muted">{formatDistance(match.distanceMeters)}</span>
@@ -277,7 +297,7 @@ export function ItemDetailPage() {
                 onClick={async () => {
                   setBusy(true);
                   try {
-                    await matchesApi.recalculate({ itemId: Number(itemId) });
+                    await matchesApi.recalculate({ itemId });
                     matchesQuery.reload();
                   } finally {
                     setBusy(false);
@@ -313,21 +333,33 @@ export function ItemDetailPage() {
                 ))}
               </div>
             ) : (
-              <p className="claim-card__note">No further status changes are available for this report.</p>
+              <p className="claim-card__note">
+                No further status changes are available for this report.
+              </p>
             )}
 
             <div className="button-row">
               <Field id="item-add-photo" label="Add another photo">
-                <input id="item-add-photo" type="file" accept="image/jpeg,image/png,image/webp" onChange={handleImageUpload} />
+                <input
+                  id="item-add-photo"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleImageUpload}
+                />
               </Field>
             </div>
 
-            <button type="button" className="button button--danger" onClick={() => setDeleteOpen(true)} disabled={busy}>
+            <button
+              type="button"
+              className="button button--danger"
+              onClick={() => setDeleteOpen(true)}
+              disabled={busy}
+            >
               Delete this report
             </button>
             <p className="field-hint">
-              Deleting hides the report from every listing while keeping its history for audits. Reports with an active
-              claim cannot be deleted.
+              Deleting hides the report from every listing while keeping its history for audits.
+              Reports with an active claim cannot be deleted.
             </p>
           </section>
         ) : null}
@@ -337,8 +369,8 @@ export function ItemDetailPage() {
             <h2>Think this is yours?</h2>
             {claimSubmitted ? (
               <SuccessMessage>
-                Your claim (reference #{claimSubmitted.claimId}) was submitted and is awaiting administrator review.
-                You can follow it under <Link to="/claims">My claims</Link>.
+                Your claim (reference #{claimSubmitted.claimId}) was submitted and is awaiting
+                administrator review. You can follow it under <Link to="/claims">My claims</Link>.
               </SuccessMessage>
             ) : null}
 
@@ -366,7 +398,9 @@ export function ItemDetailPage() {
                       maxLength={2000}
                       rows={5}
                       value={claimForm.claimMessage}
-                      onChange={(event) => setClaimForm({ ...claimForm, claimMessage: event.target.value })}
+                      onChange={(event) =>
+                        setClaimForm({ ...claimForm, claimMessage: event.target.value })
+                      }
                     />
                   </Field>
                   <Field
@@ -380,14 +414,20 @@ export function ItemDetailPage() {
                       rows={3}
                       maxLength={2000}
                       value={claimForm.privateEvidence}
-                      onChange={(event) => setClaimForm({ ...claimForm, privateEvidence: event.target.value })}
+                      onChange={(event) =>
+                        setClaimForm({ ...claimForm, privateEvidence: event.target.value })
+                      }
                     />
                   </Field>
                   <div className="button-row">
                     <button type="submit" className="button" disabled={submitting}>
                       {submitting ? 'Submitting…' : 'Submit claim'}
                     </button>
-                    <button type="button" className="button button--secondary" onClick={() => setClaimOpen(false)}>
+                    <button
+                      type="button"
+                      className="button button--secondary"
+                      onClick={() => setClaimOpen(false)}
+                    >
                       Cancel
                     </button>
                   </div>

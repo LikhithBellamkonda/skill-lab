@@ -20,15 +20,22 @@ export async function authenticate(req, res, next) {
   }
 }
 export async function optionalAuthenticate(req, res, next) {
+  let decoded;
   try {
     const token = extractToken(req);
-    if (token) {
-      const decoded = verifyToken(token);
-      const user = await User.findById(decoded.userId);
-      if (user && user.is_active) req.user = { userId: user._id.toString(), role: user.role };
-    }
-  } catch (err) {}
-  next();
+    if (!token) return next();
+    decoded = verifyToken(token);
+  } catch {
+    // Public endpoints remain available when a stale optional token is present.
+    return next();
+  }
+  try {
+    const user = await User.findById(decoded.userId);
+    if (user && user.is_active) req.user = { userId: user._id.toString(), role: user.role };
+    return next();
+  } catch (error) {
+    return next(error);
+  }
 }
 export function requireAdmin(req, res, next) {
   if (req.user?.role !== 'admin') return next(forbidden('Administrator access required'));

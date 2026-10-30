@@ -10,7 +10,7 @@
  * students plus an admin whose password is published in the README. A real
  * deployment therefore needs a way to create its own administrator. There is
  * deliberately still no HTTP endpoint that can grant the admin role, so the only
- * routes to administrator are this script and direct SQL.
+ * Routes to administrator are this script and direct database access.
  *
  * Password input
  * --------------
@@ -27,10 +27,9 @@
  *   * email exists as an admin -> reports it and changes nothing
  */
 import readline from 'node:readline';
-import { withTransaction, closePool } from '../config/db.js';
+import { connect, closePool } from '../config/db.js';
 import User from '../models/User.js';
 import { hashPassword, isPasswordAcceptable, PASSWORD_POLICY } from '../utils/password.js';
-const describeConnection = (url) => url;
 import config from '../config/env.js';
 import * as auditService from '../services/audit.service.js';
 
@@ -111,7 +110,9 @@ async function readPassword() {
 
   const first = await promptHidden('Password: ');
   if (!isPasswordAcceptable(first)) {
-    throw new Error(`Password must be ${PASSWORD_POLICY.description} (${PASSWORD_POLICY.minLength}-${PASSWORD_POLICY.maxLength} characters).`);
+    throw new Error(
+      `Password must be ${PASSWORD_POLICY.description} (${PASSWORD_POLICY.minLength}-${PASSWORD_POLICY.maxLength} characters).`
+    );
   }
   const second = await promptHidden('Confirm password: ');
   if (first !== second) throw new Error('The two passwords do not match.');
@@ -131,16 +132,15 @@ async function main() {
     throw new Error('Provide a name between 2 and 120 characters: --name="Your Name"');
   }
 
-  console.log(`Target database: ${describeConnection(config.databaseUrl)}`);
-
-    await (await import('../config/db.js')).connect();
+  const databaseName =
+    new URL(config.databaseUrl).pathname.replace(/^\/+/, '').split('/')[0] || '(default)';
+  console.log(`Target MongoDB database: "${databaseName}"`);
+  await connect();
 
   const existingUser = await User.findOne({ email });
-  const existing = existingUser ? { rows: [existingUser] } : { rows: [] };
 
-  if (existing.rows.length > 0) {
-    const user = existing.rows[0];
-
+  if (existingUser) {
+    const user = existingUser;
     if (user.role === 'admin') {
       console.log(`\n${email} is already an administrator (user_id=${user._id}). Nothing to do.`);
       return;
@@ -152,60 +152,48 @@ async function main() {
       );
     }
 
-    await withTransaction(async (client) => {
-      user.role = 'admin';
-      user.is_active = true;
-      await user.save();
-      await auditService.record(
-        {
-          actorUserId: null, // performed out-of-band by an operator
-          action: 'user.role.granted',
-          entityType: 'user',
-          entityId: user._id.toString(),
-          metadata: { email, from: existingUser.role, to: 'admin', method: 'admin:create --promote' },
-        },
-        client
-      );
+    user.role = 'admin';
+    user.is_active = true;
+    await user.save();
+    await auditService.record({
+      actorUserId: null,
+      action: 'user.role.granted',
+      entityType: 'user',
+      entityId: user._id.toString(),
+      metadata: { email, from: existingUser.role, to: 'admin', method: 'admin:create --promote' },
     });
-
     console.log(`\nPromoted ${email} to administrator (user_id=${user._id}). Password unchanged.`);
     return;
   }
 
   const password = await readPassword();
   if (!isPasswordAcceptable(password)) {
-    throw new Error(`Password must be ${PASSWORD_POLICY.description} (${PASSWORD_POLICY.minLength}-${PASSWORD_POLICY.maxLength} characters).`);
+    throw new Error(
+      `Password must be ${PASSWORD_POLICY.description} (${PASSWORD_POLICY.minLength}-${PASSWORD_POLICY.maxLength} characters).`
+    );
   }
 
   const passwordHash = await hashPassword(password);
 
-  const created = await withTransaction(async (client) => {
-    const newUser = new User({
-      full_name: fullName,
-      email,
-      password_hash: passwordHash,
-      role: 'admin',
-      is_active: true
-    });
-    await newUser.save();
-    const rows = [{ user_id: newUser._id, email, role: 'admin' }];
-
-    await auditService.record(
-      {
-        actorUserId: null,
-        action: 'user.role.granted',
-        entityType: 'user',
-        entityId: rows[0].user_id.toString(),
-        metadata: { email, from: null, to: 'admin', method: 'admin:create' },
-      },
-      client
-    );
-
-    return rows[0];
+  const created = await User.create({
+    full_name: fullName,
+    email,
+    password_hash: passwordHash,
+    role: 'admin',
+    is_active: true,
+  });
+  await auditService.record({
+    actorUserId: null,
+    action: 'user.role.granted',
+    entityType: 'user',
+    entityId: created._id.toString(),
+    metadata: { email, from: null, to: 'admin', method: 'admin:create' },
   });
 
-  console.log(`\nCreated administrator ${created.email} (user_id=${created.user_id}).`);
-  console.log('Sign in with the password you just entered. It was hashed with bcrypt and never stored in plain text.');
+  console.log(`\nCreated administrator ${created.email} (user_id=${created._id}).`);
+  console.log(
+    'Sign in with the password you just entered. It was hashed with bcrypt and never stored in plain text.'
+  );
 }
 
 main()

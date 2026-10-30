@@ -23,6 +23,7 @@ async function main() {
   });
 
   const shutdown = (signal) => {
+    console.log(`[http] received ${signal}; shutting down`);
     server.close(async () => {
       await closePool();
       process.exit(0);

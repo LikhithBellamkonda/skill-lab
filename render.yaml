@@ -12,29 +12,24 @@ services:
     name: smart-lost-found-api
     runtime: node
     plan: free
-    # Pick the region closest to your Supabase project to reduce query latency.
+    # Pick the region closest to your MongoDB Atlas cluster to reduce query latency.
     region: oregon
-    buildCommand: npm install
+    buildCommand: npm ci
     # Root `npm start` runs `npm run start --workspace server` (no watch mode).
     startCommand: npm start
     healthCheckPath: /api/v1/health
     envVars:
       - key: NODE_ENV
         value: production
+      - key: TRUST_PROXY
+        value: 'true'
 
-      # Supabase connection string (transaction pooler, port 6543).
-      # Set this in the dashboard — it must never be committed.
+      # MongoDB Atlas connection string. Set this in the dashboard; never commit it.
       - key: DATABASE_URL
         sync: false
 
-      # Supabase installs PostGIS into the `extensions` schema, so it must be on
-      # the search path or the `geography` type will not resolve.
-      - key: PG_SEARCH_PATH
-        value: "public,extensions"
-
-      # Free Postgres allows few connections; keep the pool small.
-      - key: PGPOOL_MAX
-        value: "5"
+      - key: MONGO_MAX_POOL_SIZE
+        value: '5'
 
       # Render generates a strong value automatically for this deployment.
       - key: JWT_SECRET
@@ -49,7 +44,6 @@ services:
       - key: AI_PROVIDER
         value: disabled
 
-      # Render's filesystem is ephemeral. Uploads work for the life of the
-      # instance and are lost on redeploy or restart (see docs/deployment.md §5).
+      # Render's filesystem is ephemeral. Uploads can be lost on redeploy/restart.
       - key: UPLOAD_DIR
         value: /tmp/uploads

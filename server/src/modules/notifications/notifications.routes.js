@@ -28,7 +28,7 @@ const listQuerySchema = z.object({
 });
 
 const notificationIdParamSchema = z.object({
-  notificationId: z.coerce.number().int().positive(),
+  notificationId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid notification id'),
 });
 
 export const notificationsRouter = Router();
@@ -77,9 +77,12 @@ notificationsRouter.patch(
   '/:notificationId/read',
   validate({ params: notificationIdParamSchema }),
   asyncHandler(async (req, res) => {
-    const ok = await notificationService.markRead(req.user.userId, Number(req.params.notificationId));
-    if (!ok) throw notFound(`Notification ${req.params.notificationId} was not found.`);
-    return sendOk(res, { notificationId: Number(req.params.notificationId), isRead: true });
+    const notification = await notificationService.markRead(
+      req.user.userId,
+      req.params.notificationId
+    );
+    if (!notification) throw notFound(`Notification ${req.params.notificationId} was not found.`);
+    return sendOk(res, notification);
   })
 );
 

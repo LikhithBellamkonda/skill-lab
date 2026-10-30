@@ -1,16 +1,14 @@
 #!/usr/bin/env node
 /**
- * One-command preparation for a hosted (Supabase) database.
+ * One-command preparation for a hosted MongoDB database.
  *
  *   npm run deploy:prepare
  *
  * What it does
  * ------------
  *   1. Connects to DATABASE_URL and prints the target without credentials.
- *   2. Runs preflight checks that catch the two mistakes that break a Supabase
- *      deployment: PostGIS missing, and PostGIS living in a schema that is not on
- *      the search path.
- *   3. Applies the migrations.
+ *   2. Verifies that MongoDB is reachable.
+ *   3. Confirms the Mongoose models can be used by the app.
  *   4. Creates the first administrator if the database has none.
  *   5. Prints the exact environment values to paste into Render and Vercel.
  *
@@ -24,16 +22,8 @@ import config, { ROOT_DIR } from '../config/env.js';
 import { connect } from '../config/db.js';
 import User from '../models/User.js';
 import Item from '../models/Item.js';
-const describeConnection = (url) => url;
-
 function heading(text) {
   console.log(`\n${'='.repeat(64)}\n${text}\n${'='.repeat(64)}`);
-}
-
-function fail(message, hint) {
-  console.error(`\n✗ ${message}`);
-  if (hint) console.error(`\n${hint}\n`);
-  process.exitCode = 1;
 }
 
 function runNodeScript(relativePath, args = []) {
@@ -44,19 +34,18 @@ function runNodeScript(relativePath, args = []) {
       env: process.env,
     });
     child.on('error', reject);
-    child.on('exit', (code) => (code === 0 ? resolve() : reject(new Error(`Exited with code ${code}`))));
+    child.on('exit', (code) =>
+      code === 0 ? resolve() : reject(new Error(`Exited with code ${code}`))
+    );
   });
 }
 
 async function main() {
   heading('Smart Lost & Found — deployment preparation');
-  console.log(`Target database : ${describeConnection(config.databaseUrl)}`);
+  const databaseName =
+    new URL(config.databaseUrl).pathname.replace(/^\/+/, '').split('/')[0] || '(default)';
+  console.log(`Target MongoDB database: "${databaseName}"`);
   await connect();
-
-
-
-
-
 
   // ---------------------------------------------------------------------
   // First administrator
@@ -70,14 +59,11 @@ async function main() {
     console.log('\nTo add another (for example a teammate):');
     console.log('  npm run admin:create -- --email=them@example.com --name="Their Name" --promote');
   } else {
-    console.log('No administrator exists yet. The next step asks for an email, a name and a password.');
-    console.log('(Press Ctrl+C to skip and create it later with `npm run admin:create`.)\n');
-    try {
-      await runNodeScript('server/src/scripts/create-admin.js');
-    } catch {
-      console.log('\nSkipped. Create an administrator later with:');
-      console.log('  npm run admin:create -- --email=you@example.com --name="Your Name"');
-    }
+    console.log(
+      'No administrator exists yet. The next step asks for an email, a name and a password.'
+    );
+    console.log('Create one now, or later with `npm run admin:create`.\n');
+    await runNodeScript('server/src/scripts/create-admin.js');
   }
 
   // ---------------------------------------------------------------------
@@ -91,7 +77,6 @@ async function main() {
 
   console.log('--- Render (API) environment ------------------------------------');
   console.log('  DATABASE_URL    = <your MongoDB connection string>');
-
 
   console.log('  JWT_SECRET      = (generated automatically by render.yaml)');
   console.log('  CLIENT_ORIGIN   = https://<your-app>.vercel.app   (no trailing slash)');

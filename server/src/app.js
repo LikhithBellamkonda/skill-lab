@@ -21,13 +21,14 @@ import { apiRouter } from './routes/index.js';
 import { notFoundHandler } from './middleware/notFound.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { apiLimiter } from './middleware/rateLimit.js';
+import { forbidden } from './utils/httpError.js';
 
 export function createApp() {
   const app = express();
 
   // Behind a reverse proxy the real client IP is in X-Forwarded-For; only trust
   // it when explicitly configured.
-  if (config.trustProxy) app.set('trust proxy', 1);
+  if (config.trustProxy || process.env.VERCEL) app.set('trust proxy', 1);
 
   app.disable('x-powered-by');
 
@@ -51,7 +52,7 @@ export function createApp() {
         // Allow same-origin/tooling requests with no Origin header.
         if (!origin) return callback(null, true);
         if (config.clientOrigins.includes(origin)) return callback(null, true);
-        return callback(new Error(`Origin ${origin} is not allowed by CORS.`));
+        return callback(forbidden('This origin is not allowed.'));
       },
       credentials: false,
       methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],

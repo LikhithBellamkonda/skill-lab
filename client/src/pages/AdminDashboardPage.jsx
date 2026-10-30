@@ -19,7 +19,8 @@ export function AdminDashboardPage() {
   const queueQuery = useAsyncData(() => adminApi.auditLogs({ limit: 5 }), []);
 
   if (statsQuery.loading) return <Loading label="Loading administrator statistics…" />;
-  if (statsQuery.error) return <ErrorMessage error={statsQuery.error} onRetry={statsQuery.reload} />;
+  if (statsQuery.error)
+    return <ErrorMessage error={statsQuery.error} onRetry={statsQuery.reload} />;
 
   const stats = statsQuery.data;
   if (!stats) return null;
@@ -29,18 +30,38 @@ export function AdminDashboardPage() {
       <header className="page__header">
         <h1>Administrator dashboard</h1>
         <p>
-          Counters are read directly from the database, and every moderation or review action is written to the audit
-          log.
+          Counters are read directly from the database, and every moderation or review action is
+          written to the audit log.
         </p>
       </header>
 
       <section className="stat-grid">
-        <Stat label="Reports" value={stats.items.total} hint={`${stats.items.lost} lost · ${stats.items.found} found`} />
+        <Stat
+          label="Reports"
+          value={stats.items.total}
+          hint={`${stats.items.lost} lost · ${stats.items.found} found`}
+        />
         <Stat label="Returned" value={stats.items.returned} hint="Approved claims" />
-        <Stat label="Candidate matches" value={stats.matches.total} hint={`${stats.matches.suggested} still suggested`} />
-        <Stat label="Claims" value={stats.claims.total} hint={`${stats.claims.pending} awaiting review`} />
-        <Stat label="Accounts" value={stats.users.total} hint={`${stats.users.inactive} inactive`} />
-        <Stat label="PostGIS" value={stats.database.postgisVersion} hint="Spatial engine version" />
+        <Stat
+          label="Candidate matches"
+          value={stats.matches.total}
+          hint={`${stats.matches.suggested} still suggested`}
+        />
+        <Stat
+          label="Claims"
+          value={stats.claims.total}
+          hint={`${stats.claims.pending} awaiting review`}
+        />
+        <Stat
+          label="Accounts"
+          value={stats.users.total}
+          hint={`${stats.users.inactive} inactive`}
+        />
+        <Stat
+          label="Database"
+          value={stats.database.connected ? 'MongoDB' : 'Unavailable'}
+          hint={stats.database.name}
+        />
       </section>
 
       <div className="button-row">
@@ -72,7 +93,9 @@ export function AdminDashboardPage() {
             <li key={entry.auditId}>
               <code>{entry.action}</code>
               <span className="mini-list__meta">
-                <span>{entry.entityType} #{entry.entityId ?? '—'}</span>
+                <span>
+                  {entry.entityType} #{entry.entityId ?? '—'}
+                </span>
                 <span>{entry.actorName ?? 'system'}</span>
                 <span>{new Date(entry.createdAt).toLocaleString()}</span>
               </span>

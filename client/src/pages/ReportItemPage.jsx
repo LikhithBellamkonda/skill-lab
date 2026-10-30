@@ -13,9 +13,11 @@ import { Field, ErrorMessage, SuccessMessage, Loading } from '../components/Feed
 const COPY = {
   lost: {
     heading: 'Report a lost item',
-    intro: 'Describe what you lost and where you last had it. We will suggest possible found reports.',
+    intro:
+      'Describe what you lost and where you last had it. We will suggest possible found reports.',
     titlePlaceholder: 'e.g. Lost black iPhone with a cracked screen',
-    descriptionHint: 'Include distinguishing details such as marks, stickers, engravings or contents.',
+    descriptionHint:
+      'Include distinguishing details such as marks, stickers, engravings or contents.',
     dateLabel: 'When did you lose it?',
     locationLabel: 'Where did you last have it?',
     hintLabel: 'Private detail only the owner would know (optional)',
@@ -25,9 +27,11 @@ const COPY = {
   },
   found: {
     heading: 'Report a found item',
-    intro: 'Describe what you found and where. We will look for matching lost reports and can notify the owner.',
+    intro:
+      'Describe what you found and where. We will look for matching lost reports and can notify the owner.',
     titlePlaceholder: 'e.g. Found a black phone on a library bench',
-    descriptionHint: 'Describe the item as you found it, without listing private details in the public description.',
+    descriptionHint:
+      'Describe the item as you found it, without listing private details in the public description.',
     dateLabel: 'When did you find it?',
     locationLabel: 'Where did you find it?',
     hintLabel: 'Private verification detail (optional, but recommended)',
@@ -82,7 +86,8 @@ export function ReportItemPage() {
     };
   }, []);
 
-  const set = (key) => (event) => setForm((previous) => ({ ...previous, [key]: event.target.value }));
+  const set = (key) => (event) =>
+    setForm((previous) => ({ ...previous, [key]: event.target.value }));
 
   const fieldErrors = error?.fieldErrors ?? {};
 
@@ -97,7 +102,7 @@ export function ReportItemPage() {
 
     const payload = {
       reportType,
-      categoryId: Number(form.categoryId),
+      categoryId: form.categoryId,
       title: form.title.trim(),
       description: form.description.trim(),
       colour: form.colour.trim() || null,
@@ -120,7 +125,10 @@ export function ReportItemPage() {
           await itemsApi.uploadImage(data.itemId, imageFile);
           setImageMessage({ ok: true, text: 'The photo was uploaded.' });
         } catch (caught) {
-          setImageMessage({ ok: false, text: `The report was saved, but the photo failed: ${caught.message}` });
+          setImageMessage({
+            ok: false,
+            text: `The report was saved, but the photo failed: ${caught.message}`,
+          });
         }
       }
     } catch (caught) {
@@ -136,19 +144,22 @@ export function ReportItemPage() {
         <div className="card">
           <h1>Report submitted</h1>
           <SuccessMessage>
-            Your {reportType} report <strong>{created.title}</strong> is now visible to the campus community.
+            Your {reportType} report <strong>{created.title}</strong> is now visible to the campus
+            community.
           </SuccessMessage>
           {imageMessage ? (
             <p className={imageMessage.ok ? 'text-success' : 'text-error'}>{imageMessage.text}</p>
           ) : null}
           <p>
-            We searched for possible matches immediately. {created.matchSummary?.matchCount ?? 0} candidate
+            We searched for possible matches immediately. {created.matchSummary?.matchCount ?? 0}{' '}
+            candidate
             {created.matchSummary?.matchCount === 1 ? '' : 's'} found so far; the best score is{' '}
             {created.matchSummary?.bestScore ?? 0}%.
           </p>
           {created.privateDetails?.verificationHint ? (
             <p className="notice">
-              Your private verification detail is stored and will only be visible to you and administrators.
+              Your private verification detail is stored and will only be visible to you and
+              administrators.
             </p>
           ) : null}
           <div className="button-row">
@@ -170,7 +181,8 @@ export function ReportItemPage() {
         <h1>{copy.heading}</h1>
         <p>{copy.intro}</p>
         <p className="page__switch">
-          Looking to report the opposite? <Link to={`/report/${reportType === 'lost' ? 'found' : 'lost'}`}>
+          Looking to report the opposite?{' '}
+          <Link to={`/report/${reportType === 'lost' ? 'found' : 'lost'}`}>
             Report a {reportType === 'lost' ? 'found' : 'lost'} item
           </Link>
           .
@@ -181,7 +193,9 @@ export function ReportItemPage() {
       <ErrorMessage error={categoriesError} />
 
       <form className="card form" onSubmit={handleSubmit} noValidate>
-        {categories.length === 0 && !categoriesError ? <Loading label="Loading categories…" /> : null}
+        {categories.length === 0 && !categoriesError ? (
+          <Loading label="Loading categories…" />
+        ) : null}
 
         <Field id="item-title" label="Title" required error={fieldErrors.title}>
           <input
@@ -197,7 +211,13 @@ export function ReportItemPage() {
           />
         </Field>
 
-        <Field id="item-description" label="Description" required hint={copy.descriptionHint} error={fieldErrors.description}>
+        <Field
+          id="item-description"
+          label="Description"
+          required
+          hint={copy.descriptionHint}
+          error={fieldErrors.description}
+        >
           <textarea
             id="item-description"
             required
@@ -229,16 +249,36 @@ export function ReportItemPage() {
           </Field>
 
           <Field id="item-event-time" label={copy.dateLabel} required error={fieldErrors.eventTime}>
-            <input id="item-event-time" type="datetime-local" required value={form.eventTime} onChange={set('eventTime')} />
+            <input
+              id="item-event-time"
+              type="datetime-local"
+              required
+              value={form.eventTime}
+              onChange={set('eventTime')}
+            />
           </Field>
         </div>
 
         <div className="form__row">
           <Field id="item-colour" label="Colour" error={fieldErrors.colour}>
-            <input id="item-colour" type="text" maxLength={50} value={form.colour} onChange={set('colour')} placeholder="e.g. black" />
+            <input
+              id="item-colour"
+              type="text"
+              maxLength={50}
+              value={form.colour}
+              onChange={set('colour')}
+              placeholder="e.g. black"
+            />
           </Field>
           <Field id="item-brand" label="Brand" error={fieldErrors.brand}>
-            <input id="item-brand" type="text" maxLength={100} value={form.brand} onChange={set('brand')} placeholder="e.g. Apple" />
+            <input
+              id="item-brand"
+              type="text"
+              maxLength={100}
+              value={form.brand}
+              onChange={set('brand')}
+              placeholder="e.g. Apple"
+            />
           </Field>
         </div>
 
@@ -256,7 +296,8 @@ export function ReportItemPage() {
         <fieldset className="form__group">
           <legend>Coordinates (optional, improves matching)</legend>
           <p className="field-hint">
-            Decimal degrees, WGS84: latitude first, then longitude. Provide either both values or neither.
+            Decimal degrees, WGS84: latitude first, then longitude. Provide either both values or
+            neither.
           </p>
           <div className="form__row">
             <Field id="item-latitude" label="Latitude" error={fieldErrors.latitude}>
@@ -288,7 +329,12 @@ export function ReportItemPage() {
           </div>
         </fieldset>
 
-        <Field id="item-verification" label={copy.hintLabel} hint={copy.hintHelp} error={fieldErrors.verificationHint}>
+        <Field
+          id="item-verification"
+          label={copy.hintLabel}
+          hint={copy.hintHelp}
+          error={fieldErrors.verificationHint}
+        >
           <textarea
             id="item-verification"
             rows={3}

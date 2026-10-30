@@ -22,7 +22,12 @@ import { badRequest, payloadTooLarge } from '../utils/httpError.js';
 const ALLOWED_MIME_TYPES = Object.freeze({
   'image/jpeg': { extension: 'jpg', magic: [[0xff, 0xd8, 0xff]] },
   'image/png': { extension: 'png', magic: [[0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]] },
-  'image/webp': { extension: 'webp', magic: [['RIFF']], offset: 8, magicAt: [[0x57, 0x45, 0x42, 0x50]] },
+  'image/webp': {
+    extension: 'webp',
+    magic: [[0x52, 0x49, 0x46, 0x46]],
+    offset: 8,
+    magicAt: [[0x57, 0x45, 0x42, 0x50]],
+  },
 });
 
 fs.mkdirSync(config.uploadDir, { recursive: true });
@@ -54,7 +59,7 @@ export const uploadImage = multer({
 }).single('image');
 
 /** Reads the file header and confirms it matches a supported image format. */
-function detectImageMime(filePath) {
+export function detectImageMime(filePath) {
   const header = Buffer.alloc(16);
   const descriptor = fs.openSync(filePath, 'r');
   try {
@@ -97,13 +102,18 @@ export function handleImageUpload(req, res, next) {
 
     const detected = detectImageMime(req.file.path);
     if (!detected || detected !== req.file.mimetype) {
-      fs.rm(req.file.path, { force: true }, () => {});
-      return next(
-        badRequest('The uploaded file is not a valid JPEG, PNG or WebP image.', {
-          declared: req.file.mimetype,
-          detected,
-        })
-      );
+      fs.promises
+        .rm(req.file.path, { force: true })
+        .then(() =>
+          next(
+            badRequest('The uploaded file is not a valid JPEG, PNG or WebP image.', {
+              declared: req.file.mimetype,
+              detected,
+            })
+          )
+        )
+        .catch(next);
+      return;
     }
 
     req.file.detectedMimeType = detected;
@@ -111,10 +121,10 @@ export function handleImageUpload(req, res, next) {
   });
 }
 
-/** Removes a stored file, ignoring "already gone" errors. */
+/** Removes a stored upload. `force` only ignores a missing file. */
 export function removeStoredFile(storageKey) {
   const absolute = path.join(config.uploadDir, path.basename(storageKey));
-  fs.rm(absolute, { force: true }, () => {});
+  return fs.promises.rm(absolute, { force: true });
 }
 
 export { ALLOWED_MIME_TYPES };
